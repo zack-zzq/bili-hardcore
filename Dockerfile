@@ -15,7 +15,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 # 复制源代码并安装项目
 COPY README.md ./
 COPY src/ src/
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-editable
 
 # ==================== Runtime Stage ====================
 FROM python:3.13-slim AS runtime
