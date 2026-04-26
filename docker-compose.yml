@@ -1,6 +1,6 @@
 services:
   bili-hardcore:
-    image: ghcr.io/karben233/bili-hardcore:latest
+    image: ghcr.io/zack-zzq/bili-hardcore:latest
     container_name: bili-hardcore
     restart: unless-stopped
     ports:
