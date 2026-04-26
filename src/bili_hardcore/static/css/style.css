@@ -250,7 +250,17 @@ input::placeholder { color: var(--text-muted); }
     margin-bottom: 6px;
 }
 .task-item-id { font-weight: 600; font-size: 0.9rem; }
+.task-item-actions { display: flex; align-items: center; gap: 6px; }
 .task-item-time { font-size: 0.75rem; color: var(--text-muted); }
+.btn-delete-task {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    background: transparent; border: none; border-radius: 4px;
+    color: var(--text-muted); cursor: pointer;
+    opacity: 0; transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.task-item:hover .btn-delete-task { opacity: 1; }
+.btn-delete-task:hover { color: var(--error); background: var(--error-soft); }
 .task-item-body {
     display: flex;
     justify-content: space-between;
@@ -362,7 +372,7 @@ input::placeholder { color: var(--text-muted); }
     border-radius: var(--radius);
     margin-bottom: 16px;
 }
-.qr-wrapper canvas { display: block; }
+.qr-wrapper canvas, .qr-wrapper img { display: block; }
 #qr-download-btn { margin: 0 auto; }
 
 /* 分类选择 */

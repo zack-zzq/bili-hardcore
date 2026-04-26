@@ -1,7 +1,12 @@
-"""全局配置模块 - 从环境变量读取配置"""
+"""全局配置模块 - 从环境变量和 .env 文件读取配置"""
 
 import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+# 加载 .env 文件（如果存在），不覆盖已有的环境变量
+load_dotenv(override=False)
 
 # ==================== 应用配置 ====================
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")

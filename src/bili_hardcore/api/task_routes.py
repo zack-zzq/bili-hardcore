@@ -1,6 +1,10 @@
 """任务管理路由"""
 
-from fastapi import APIRouter, Depends, HTTPException
+import base64
+import io
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from bili_hardcore.auth import get_current_user
 from bili_hardcore.core.task_manager import task_manager
@@ -27,6 +31,23 @@ async def list_tasks(_: str = Depends(get_current_user)):
     """获取所有任务列表"""
     tasks = await get_all_tasks()
     return TaskListResponse(tasks=[TaskInfo(**t) for t in tasks])
+
+
+@router.get("/qrcode")
+async def generate_qrcode(data: str = Query(...), _: str = Depends(get_current_user)):
+    """服务端生成二维码图片 (PNG)"""
+    import qrcode
+    from qrcode.constants import ERROR_CORRECT_L
+
+    qr = qrcode.QRCode(version=None, error_correction=ERROR_CORRECT_L, box_size=10, border=3)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return Response(content=buf.getvalue(), media_type="image/png")
 
 
 @router.get("/{task_id}")
@@ -65,3 +86,4 @@ async def submit_category(
     if not task_manager.submit_category(task_id, req.ids):
         raise HTTPException(status_code=400, detail="任务不在等待选择分类状态")
     return {"status": "ok"}
+

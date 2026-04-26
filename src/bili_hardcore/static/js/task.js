@@ -4,6 +4,8 @@
 const TaskUI = {
     _currentTaskId: null,
     _selectedCategories: new Set(),
+    /** 缓存空状态 HTML 以便重新创建 */
+    _emptyStateHtml: '',
 
     /** 获取任务列表 */
     async fetchTasks() {
@@ -37,10 +39,12 @@ const TaskUI = {
 
     /** 删除任务 */
     async deleteTask(taskId) {
+        if (!confirm('确定要删除此任务吗？')) return;
         try {
             await Auth.apiFetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
             if (this._currentTaskId === taskId) {
                 this._currentTaskId = null;
+                WS.disconnect(taskId);
                 this.showWelcome();
             }
             await this.refreshTaskList();
@@ -54,19 +58,20 @@ const TaskUI = {
         const tasks = await this.fetchTasks();
         const list = document.getElementById('task-list');
         const count = document.getElementById('task-count');
-        const empty = document.getElementById('empty-state');
 
         count.textContent = tasks.length;
+        list.innerHTML = '';
 
         if (tasks.length === 0) {
-            list.innerHTML = '';
-            list.appendChild(empty);
-            empty.style.display = 'block';
+            list.innerHTML = `
+                <div class="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg>
+                    <p>暂无任务</p>
+                    <p class="hint">点击"新建任务"开始</p>
+                </div>`;
             return;
         }
 
-        empty.style.display = 'none';
-        list.innerHTML = '';
         tasks.forEach(t => {
             const item = document.createElement('div');
             item.className = `task-item${t.id === this._currentTaskId ? ' active' : ''}`;
@@ -74,14 +79,30 @@ const TaskUI = {
             item.innerHTML = `
                 <div class="task-item-header">
                     <span class="task-item-id">#${t.id}</span>
-                    <span class="task-item-time">${this._formatTime(t.created_at)}</span>
+                    <div class="task-item-actions">
+                        <span class="task-item-time">${this._formatTime(t.created_at)}</span>
+                        <button class="btn-delete-task" title="删除任务" data-task-id="${t.id}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="task-item-body">
                     <span class="task-item-user">${t.bili_username || '等待登录...'}</span>
                     <span class="badge ${this._stateBadgeClass(t.state)}">${this._stateLabel(t.state)}</span>
                 </div>
             `;
-            item.addEventListener('click', () => this.selectTask(t.id));
+            // 点击任务项选中
+            item.addEventListener('click', (e) => {
+                // 不在删除按钮上触发选中
+                if (e.target.closest('.btn-delete-task')) return;
+                this.selectTask(t.id);
+            });
+            // 删除按钮
+            const delBtn = item.querySelector('.btn-delete-task');
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteTask(t.id);
+            });
             list.appendChild(item);
         });
     },

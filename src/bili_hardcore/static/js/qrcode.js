@@ -1,11 +1,12 @@
 /**
- * qrcode.js — 二维码生成模块 (纯 JS Canvas 实现)
+ * qrcode.js — 二维码生成模块
  *
- * 基于 QR Code 生成算法，使用 Canvas 渲染二维码，支持下载为 PNG。
- * 为了避免外部依赖，使用简化方案：将 URL 通过 Google Chart API 作为备选，
- * 主要使用内联的轻量 QR 库。
+ * 使用后端 API 生成二维码图片，避免依赖外部服务。
+ * 支持下载为 PNG。
  */
 const QRGenerator = {
+    _blobUrl: null,
+
     /**
      * 在指定容器中生成二维码
      * @param {string} containerId - 容器元素 ID
@@ -15,45 +16,61 @@ const QRGenerator = {
     async generate(containerId, data, size = 256) {
         const container = document.getElementById(containerId);
         if (!container) return;
-        container.innerHTML = '';
+        container.innerHTML = '<p style="color: var(--text-muted); padding: 40px;">二维码加载中...</p>';
 
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        canvas.id = 'qr-canvas';
-        container.appendChild(canvas);
+        // 释放旧的 blob URL
+        if (this._blobUrl) {
+            URL.revokeObjectURL(this._blobUrl);
+            this._blobUrl = null;
+        }
 
-        // 使用简单的 Canvas 绘制方法
-        // 通过后端或 img 标签方式获取二维码图像
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        // 使用 QR 服务生成
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&margin=8`;
-        
-        return new Promise((resolve, reject) => {
-            img.onload = () => {
-                const ctx = canvas.getContext('2d');
-                // 白色背景
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, size, size);
-                ctx.drawImage(img, 0, 0, size, size);
-                resolve(canvas);
-            };
-            img.onerror = () => {
-                // 降级方案：显示链接文本
-                container.innerHTML = `<p style="color: var(--text-secondary); word-break: break-all; font-size: 0.85rem; padding: 20px;">二维码加载失败，请手动访问: <br><a href="${data}" target="_blank" style="color: var(--accent);">${data}</a></p>`;
-                resolve(null);
-            };
-            img.src = qrUrl;
-        });
+        const token = Auth.getToken();
+        const qrUrl = `/api/tasks/qrcode?data=${encodeURIComponent(data)}`;
+
+        try {
+            const resp = await fetch(qrUrl, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+            const blob = await resp.blob();
+            this._blobUrl = URL.createObjectURL(blob);
+
+            // 创建 img 并等待加载完成
+            const img = new Image();
+            img.id = 'qr-image';
+            img.alt = '登录二维码';
+            img.style.maxWidth = size + 'px';
+            img.style.maxHeight = size + 'px';
+            img.style.display = 'block';
+
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = this._blobUrl;
+            });
+
+            container.innerHTML = '';
+            container.appendChild(img);
+        } catch (e) {
+            console.error('二维码生成失败:', e);
+            container.innerHTML = `<p style="color: var(--text-secondary); word-break: break-all; font-size: 0.85rem; padding: 20px;">二维码加载失败<br><a href="${data}" target="_blank" style="color: var(--accent);">点击此处手动登录</a></p>`;
+        }
     },
 
     /**
      * 下载当前二维码为 PNG 图片
      */
     download() {
-        const canvas = document.getElementById('qr-canvas');
-        if (!canvas) return;
+        const img = document.getElementById('qr-image');
+        if (!img || !img.src) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
         const link = document.createElement('a');
         link.download = 'bili-hardcore-qrcode.png';
         link.href = canvas.toDataURL('image/png');

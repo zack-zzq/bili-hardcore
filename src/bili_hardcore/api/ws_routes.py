@@ -39,6 +39,16 @@ async def task_websocket(
     queue: asyncio.Queue = asyncio.Queue(maxsize=200)
     ctx.ws_subscribers.append(queue)
 
+    # 如果任务已在扫码状态，立即发送二维码 URL
+    if ctx.qr_url and ctx.state.value == "qr_login":
+        try:
+            await websocket.send_json({
+                "type": "qr_code",
+                "data": {"url": ctx.qr_url},
+            })
+        except Exception:
+            pass
+
     try:
         while True:
             msg = await queue.get()
@@ -49,3 +59,4 @@ async def task_websocket(
         pass
     finally:
         ctx.ws_subscribers.remove(queue)
+

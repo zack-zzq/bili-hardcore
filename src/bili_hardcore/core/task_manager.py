@@ -37,6 +37,8 @@ class TaskContext:
         self.state = TaskState.PENDING
         self.asyncio_task: asyncio.Task | None = None
         self.ws_subscribers: list[asyncio.Queue] = []
+        # 保存二维码 URL 以便后续连接的客户端获取
+        self.qr_url: str | None = None
         # 用于人工交互的 Future
         self._captcha_future: asyncio.Future | None = None
         self._category_future: asyncio.Future | None = None
@@ -149,6 +151,7 @@ class TaskManager:
         auth_code = qr_data["auth_code"]
 
         await ctx.log("请使用哔哩哔哩APP扫描二维码登录")
+        ctx.qr_url = url
         await ctx.broadcast(WSMessage(
             type=WSMessageType.QR_CODE,
             data={"url": url},
