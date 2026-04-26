@@ -20,13 +20,14 @@ RUN uv sync --frozen --no-dev --no-editable
 # ==================== Runtime Stage ====================
 FROM python:3.13-slim AS runtime
 
-# 安全：创建非 root 用户
-RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app
-
 WORKDIR /app
 
 # 从 builder 拷贝虚拟环境
 COPY --from=builder /app/.venv /app/.venv
+
+# 复制 entrypoint 脚本
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
 
 # 设置环境变量
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -34,13 +35,12 @@ ENV PATH="/app/.venv/bin:$PATH" \
     DATA_DIR=/app/data
 
 # 创建数据目录
-RUN mkdir -p /app/data && chown -R app:app /app
-
-USER app
+RUN mkdir -p /app/data
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8080/api/auth/verify', timeout=5)" || exit 1
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["bili-hardcore"]
