@@ -1,0 +1,23 @@
+services:
+  bili-hardcore:
+    image: ghcr.io/karben233/bili-hardcore:latest
+    container_name: bili-hardcore
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # ===== 必填: OpenAI Compatible API 配置 =====
+      - OPENAI_BASE_URL=https://api.siliconflow.cn/v1
+      - OPENAI_API_KEY=your-api-key-here
+
+      # ===== 可选: 认证配置 (默认 admin/admin) =====
+      - AUTH_USERNAME=admin
+      - AUTH_PASSWORD=admin
+
+      # ===== 可选: JWT 密钥 (生产环境务必修改) =====
+      - JWT_SECRET=change-me-in-production
+    volumes:
+      - bili-data:/app/data
+
+volumes:
+  bili-data:
